@@ -69,7 +69,9 @@ async function run(){
        app.get('/appointments', verifyToken, async(req, res) => {
            const email = req.query.email;  //email diye filter korbo
         
-           const date = new Date(req.query.date).toDateString();
+        //    const date = new Date(req.query.date).toDateString();
+           const date = req.query.date;
+
            console.log(date);
            
            const query = { email: email, date: date }
