@@ -4,25 +4,31 @@ const cors = require('cors');
 const admin = require("firebase-admin");
 require('dotenv').config();
 const { MongoClient } = require('mongodb');
+const ObjectId = require('mongodb').ObjectId;
+const stripe = require('stripe')(process.env.STRIPE_SECRET);
+const fileUpload =require('express-fileupload');
+
 
 const port = process.env.PORT || 5000;
+
 
 
 // doctor - portal - bb0e0 - firebase - adminsdk - e61do - c1663db2f1.json
 
 
-
-
 const serviceAccount = require('./doctor-portal-bb0e0-firebase-adminsdk-e61do-c1663db2f1.json');
+
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
 });
 
 
-
 app.use(cors());
 app.use(express.json());
+app.use(fileUpload());
+
+
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.zoj9s.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 
@@ -62,7 +68,8 @@ async function run(){
     //user collection
     const usersCollection = database.collection('users');
 
-
+    //doctor collection
+       const doctorsCollection = database.collection('doctors');
 
 
 //Appointments data load
@@ -82,6 +89,14 @@ async function run(){
            const appointments = await cursor.toArray();
            res.json(appointments);
        })
+
+// payment load (Load appointment specific data install stripe and stripe for react)
+       app.get('/appointments/:id', async(req, res) =>{
+           const id = req.params.id;
+           const query = { _id: ObjectId(id)};
+           const result = await appointmentsCollection.findOne(query);
+           res.json(result);
+       })
    
 // server a data gulo pathabo  
 
@@ -93,9 +108,54 @@ async function run(){
        });
 
 
+// appointments update
+       app.put('/appointments/:id', async(req, res) => {
+           const id = req.params.id;
+           const payment = req.body;
+           const filter = {_id: ObjectId(id)};
+           const updateDoc = {
+               $set: {
+                   payment: payment
+               }
+             };
+               const result = await appointmentsCollection.updateOne(filter, updateDoc);
+               res.json(result);
+        }) 
+        
+   
+       app.get('/doctors', async (req, res) => {
+          const cursor = doctorsCollection.find({});
+          const doctors = await cursor.toArray();
+          res.json(doctors)
+
+       })
+
+//doctor add 
+       app.post('/doctors', async (req, res) => {
+           const name = req.body.name;
+           const email = req.body.email;
+           const pic = req.files.image;
+           const picData = pic.data;
+           const encodedPic = picData.toString('base64');
+           const imageBuffer = Buffer.from(encodedPic, 'base64');
+           const doctor = {
+               name,
+               email,
+               image: imageBuffer
+           }
+           const result = await doctorsCollection.insertOne(doctor);
+           res.json(result);
+       })
+    
 
 
-       // admin verified - যার email দেয়েছি সে কি admin or admin না
+
+
+
+
+
+       
+ // admin verified - যার email দেয়েছি সে কি admin or admin না
        app.get('/users/:email', async (req, res) => {
           const email = req.params.email;
           const query = { email: email};
@@ -106,7 +166,7 @@ async function run(){
           }
           res.json({admin: isAdmin});
        })
-          
+
 
 //user j data তৈরি করবে / redister korbe tar information database a thakbe.. সেই data .. database a রাখবো- useFirebase.js
        app.post('/users', async(req, res) =>{
@@ -117,14 +177,7 @@ async function run(){
        })
 
 
-
-
-
-
-       
-
-
-       /// google দিয়ে login করলে database  এ ইনফর্মেশন যাবে
+   /// google দিয়ে login করলে database  এ ইনফর্মেশন যাবে
        app.put('/users', async(req, res) =>{
            const user = req.body;
            const filter = {email: user.email};
@@ -133,8 +186,8 @@ async function run(){
            const result = await usersCollection.updateOne(filter, updateDoc, options);
            res.json(result);
        });
-
-       
+   
+          
 // Admin users তৈরি
        app.put('/users/admin', verifyToken, async(req, res) => {
          const user = req.body;
@@ -154,23 +207,30 @@ async function run(){
            }
        })
 
-   }
-         
-        
+// PAYMENT ER TK KOTO KATBE
+       app.post('/create-payment-intent', async(req,res) => {
+           const paymentInfo = req.body;
+           const amount = paymentInfo.price * 100;
+           const paymentIntent = await stripe.paymentIntents.create({
+               currency: 'usd',
+               amount: amount,
+               payment_method_types: ['card']
 
+           });
+           res.json({ clientSecret: paymentIntent.client_secret })
+               
+        })   
+    }   
 
-
-      
-
-   finally{
+    finally{
 
     //   await client.close() 
    
       }
 }
 
-run().catch(console.dir);
 
+run().catch(console.dir);    
 
 app.get('/', (req, res) => {
     res.send('Hello Doctors portals')
@@ -179,11 +239,3 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
     console.log(`listening at ${port}`)
 })       
-
-
-
-
-
-
-
-
