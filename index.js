@@ -9,7 +9,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET);
 const fileUpload =require('express-fileupload');
 
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 2000;
 
 
 
@@ -30,7 +30,8 @@ app.use(fileUpload());
 
 
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.zoj9s.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
+// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.zoj9s.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
+const uri = 'mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0-re3gq.mongodb.net/test?retryWrites=true'
 
 //console.log(uri)
 
